@@ -1,0 +1,110 @@
+getwd()
+data<-read.csv("customer data.csv")
+attach(data)
+
+#remove customers whose order is 0
+data<-data[!Total.Orders==0,] 
+View(data)
+
+#plot the country barplot
+install.packages("ggplot2")
+devtools::install_github("dkahle/ggmap")
+devtools::install_github("hadley/ggplot2")
+install.packages("maps")
+install.packages("ggmap")
+library(ggplot2)
+library(ggmap)
+library(mapproj)
+
+ggplot(data=data)+geom_bar (mapping = aes(x=Country))
+
+
+
+#plot US map about each number of order states have 
+us<-get_map(location = 'united states', zoom = 4, maptype = "terrain", source = 'google', color='color')
+ggmap(us) 
+
+#now try to add points on the map
+#select data that only in United States
+
+us_data<-data[data[,"Country"]=="United States",] 
+View(us_data)
+#combine city, province, country together to a single col(address) in us_data
+us_data$address<-paste(us_data$City, us_data$Province,us_data$Country, sep = ",")
+
+count.states<-table(unlist(us_data$Province.Code)) 
+##count the number of one letter in a string
+library(stringr)
+q.data<-data.frame(number=1:3, string=c("greatgreat", "magic", "not"), stringsAsFactors = F)
+View(q.data)
+q.data$number.of.a<-str_count(q.data$string, "a")
+q.data
+##
+
+
+
+#count the number of frequency
+library(plyr)
+count.states<-count(us_data,'address')
+count.states<-count.states[order(-count.states$freq),] 
+head(count.states,20)
+count.states
+#freq+total.oder
+us_data[us_data$Total.Orders>1,]
+count.states$freq[1]<-count.states$freq[1]+3
+count.states$address=="Newport Beach,California,United States"
+#find row number of a value
+which(grepl("Newport Beach,California,United States",count.states$address))
+which(grepl("New York,New York,United States", count.states$address))
+?grepl
+count.states$freq[24]<-2
+count.states
+count.states<-count.states[order(-count.states$freq),]
+
+library(httr)
+library(rjson)
+data <- paste0("[",paste(paste0("\"",us_data$address,"\""),collapse=","),"]")
+url  <- "http://www.datasciencetoolkit.org/street2coordinates"
+response <- POST(url,body=data)
+json     <- fromJSON(content(response,type="text"))
+
+geocode  <- as.data.frame(
+  do.call(rbind,sapply(json,
+                       function(x) c(address=x$addess,lon=x$longitude,lat=x$latitude))))
+
+geocode$address <- rownames(geocode)
+#wrtie data.frame to pdf table
+install.packages("gridExtra")
+library(gridExtra)
+grid.table(count.states)
+?gpar
+write.csv(count.states)
+
+g<-merge(count.states, geocode, by="address")
+
+?merge
+#change a col name
+colnames(count.states)[1]<-"address"
+colnames(count.states)
+g<-merge(count.states, result, by = "address") #merge two data.frames, they must have common col or row
+
+#add points on map again:
+ggmap(us) + geom_point(
+  aes(x=lon, y=lat, colour=freq), data=g, alpha=.5, na.rm= T, size= g$freq*0.8) +
+  scale_color_gradient(low = "red", high="blue")
+#!Error: Discrete value supplied to continuous scale, cuz the class of long and lat are factors
+class(g$lon)
+class(g$lat)
+class(g$freq)
+g$long<-as.numeric(g$long)
+g$lat<-as.numeric(g$lat)
+ggmap(us) + geom_point(
+  aes(x=long, y=lat, colour=freq), data=g,size= g$freq*10) +
+  scale_color_gradient(low = "green", high="red")
+View(g)
+
+
+
+
+
+
