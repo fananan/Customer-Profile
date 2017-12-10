@@ -1,2 +1,2 @@
 # Customer-Profile
-This is customer profile for a company (the data is not published in this project)
+To create a customer geospatial profile for a company by using ggmap in R. (the data is confidential, so it's not published in this project)
